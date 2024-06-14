@@ -12,7 +12,7 @@ ns-install-cli
 ```
 
 ## Running the new method
-This repository creates a new Nerfstudio method named "method-template". To train with it, download the train/test tsv file from the bottom of [nerf-w](https://nerf-w.github.io/) and put it under the data folder. For instance, for brandenburg Gate the path would be `splatfacto-w\data\brandenburg_gate\brandenburg.tsv`.
+This repository creates a new Nerfstudio method named "method-template". To train with it, download the train/test tsv file from the bottom of [nerf-w](https://nerf-w.github.io/) and put it under the data folder (or copy them from `.\splatfacto-w\dataset_split`). For instance, for Brandenburg Gate the path would be `splatfacto-w\data\brandenburg_gate\brandenburg.tsv`.
 Then, run the command:
 ```
 ns-train splatfacto-w --data [PATH]
