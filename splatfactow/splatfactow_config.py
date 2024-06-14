@@ -11,10 +11,9 @@ from splatfactow.splatfactow_datamanager import (
 )
 from splatfactow.splatfactow_model import SplatfactoWModelConfig
 from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
-from splatfactow.phototourism_dataparser import PhototourismDataParserConfig
+from splatfactow.nerfw_dataparser import NerfWDataParserConfig
 from nerfstudio.configs.base_config import ViewerConfig
-from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
-from nerfstudio.engine.optimizers import AdamOptimizerConfig, RAdamOptimizerConfig
+from nerfstudio.engine.optimizers import AdamOptimizerConfig
 from nerfstudio.engine.schedulers import (
     ExponentialDecaySchedulerConfig,
 )
@@ -34,7 +33,7 @@ splatfactow_config = MethodSpecification(
         mixed_precision=False,
         pipeline=VanillaPipelineConfig(
             datamanager=SplatfactoWDatamanagerConfig(
-                dataparser=PhototourismDataParserConfig(),
+                dataparser=NerfWDataParserConfig(),
                 cache_images_type="uint8",
             ),
             model=SplatfactoWModelConfig(),

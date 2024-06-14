@@ -16,7 +16,6 @@
 
 from __future__ import annotations
 import pandas as pd
-import math
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional, Type
@@ -44,10 +43,10 @@ from nerfstudio.utils.rich_utils import CONSOLE
 
 
 @dataclass
-class PhototourismDataParserConfig(DataParserConfig):
+class NerfWDataParserConfig(DataParserConfig):
     """Phototourism dataset parser config"""
 
-    _target: Type = field(default_factory=lambda: Phototourism)
+    _target: Type = field(default_factory=lambda: NerfW)
     """target class to instantiate"""
     data: Path = Path("data/brandenburg-gate")
     """Directory specifying location of data."""
@@ -78,14 +77,14 @@ class PhototourismDataParserConfig(DataParserConfig):
 
 
 @dataclass
-class Phototourism(DataParser):
+class NerfW(DataParser):
     """Phototourism dataset. This is based on https://github.com/kwea123/nerf_pl/blob/nerfw/datasets/phototourism.py
     and uses colmap's utils file to read the poses.
     """
 
-    config: PhototourismDataParserConfig
+    config: NerfWDataParserConfig
 
-    def __init__(self, config: PhototourismDataParserConfig):
+    def __init__(self, config: NerfWDataParserConfig):
         super().__init__(config=config)
         self.data: Path = config.data
         self.i_eval = None
