@@ -10,9 +10,7 @@ from splatfactow.splatfactow_datamanager import (
     SplatfactoWDatamanagerConfig,
 )
 from splatfactow.splatfactow_model import SplatfactoWModelConfig
-from splatfactow.splatfactow_config import (
-    SplatfactoWPipelineConfig,
-)
+from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 from splatfactow.phototourism_dataparser import PhototourismDataParserConfig
 from nerfstudio.configs.base_config import ViewerConfig
 from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
@@ -25,15 +23,16 @@ from nerfstudio.plugins.types import MethodSpecification
 
 
 splatfactow_config = MethodSpecification(
+    description="Splatfacto in the wild",
     config=TrainerConfig(
         method_name="splatfacto-w",
-        steps_per_eval_image=1000000,
+        steps_per_eval_image=100,
         steps_per_eval_batch=0,
         steps_per_save=2000,
-        steps_per_eval_all_images=1000000,
+        steps_per_eval_all_images=1000,
         max_num_iterations=65000,
         mixed_precision=False,
-        pipeline=SplatfactoWPipelineConfig(
+        pipeline=VanillaPipelineConfig(
             datamanager=SplatfactoWDatamanagerConfig(
                 dataparser=PhototourismDataParserConfig(),
                 cache_images_type="uint8",
@@ -94,5 +93,5 @@ splatfactow_config = MethodSpecification(
         },
         viewer=ViewerConfig(num_rays_per_chunk=1 << 15),
         vis="viewer",
-    )
+    ),
 )

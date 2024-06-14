@@ -15,7 +15,7 @@
 """Phototourism dataset parser. Datasets and documentation here: http://phototour.cs.washington.edu/datasets/"""
 
 from __future__ import annotations
-
+import pandas as pd
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -49,14 +49,14 @@ class PhototourismDataParserConfig(DataParserConfig):
 
     _target: Type = field(default_factory=lambda: Phototourism)
     """target class to instantiate"""
-    data: Path = Path("data/phototourism/brandenburg-gate")
+    data: Path = Path("data/brandenburg-gate")
     """Directory specifying location of data."""
+    data_name: Literal["brandenburg", "trevi", "sacre"] = "brandenburg"
+    """Name of the dataset."""
     scale_factor: float = 3.0
     """How much to scale the camera origins by."""
     alpha_color: str = "white"
     """alpha color of background"""
-    train_split_fraction: float = 0.95
-    """The fraction of images to use for training. The remaining images are for eval."""
     scene_scale: float = 1.0
     """How much to scale the region of interest by."""
     orientation_method: Literal["pca", "up", "vertical", "none"] = "up"
@@ -97,10 +97,6 @@ class Phototourism(DataParser):
         with CONSOLE.status(
             f"[bold green]Reading phototourism images and poses for {split} split..."
         ) as _:
-            # TODO(1480) use pycolmap
-            # recon = pycolmap.Reconstruction(self.data / "dense" / "sparse")
-            # cams = recon.cameras
-            # imgs = recon.images
             cams = read_cameras_binary(self.data / "dense/sparse/cameras.bin")
             imgs = read_images_binary(self.data / "dense/sparse/images.bin")
 
@@ -142,25 +138,39 @@ class Phototourism(DataParser):
         cxs = torch.stack(cxs).float()
         cys = torch.stack(cys).float()
 
-        # filter image_filenames and poses based on train/eval split percentage
-        num_images = len(image_filenames)
-        num_train_images = math.ceil(num_images * self.config.train_split_fraction)
-        num_eval_images = num_images - num_train_images
-        i_all = np.arange(num_images)
-        i_train = np.linspace(
-            0, num_images - 1, num_train_images, dtype=int
-        )  # equally spaced training images starting and ending at 0 and num_images-1
-        i_eval = np.setdiff1d(i_all, i_train)  # eval images are the remaining images
-        # change ievel to list
-        self.i_eval = i_eval.tolist()
-        i_all = torch.tensor(i_all, dtype=torch.long)
-        i_train = torch.tensor(i_train, dtype=torch.long)
-        i_eval = torch.tensor(i_eval, dtype=torch.long)
-        assert len(i_eval) == num_eval_images
+        # Load the TSV file to get the train/eval split
+        split_file = self.data / f"{self.config.data_name}.tsv"
+        split_data = pd.read_csv(split_file, sep="\t")
+        # kick lines that is NA
+        split_data = split_data.dropna()
+
+        # Create a mapping from image filenames to indices
+        filename_to_index = {img.name: idx for idx, img in enumerate(imgs.values())}
+
+        # Get train and test indices based on filenames
+        train_indices = torch.tensor(
+            [filename_to_index[name] for name in split_data["filename"].values]
+        )
+        eval_indices = torch.tensor(
+            [
+                filename_to_index[name]
+                for name in split_data[split_data["split"] == "test"]["filename"].values
+            ]
+        )
+
+        self.i_eval = [
+            filename_to_index[name]
+            for name in split_data[split_data["split"] == "test"]["filename"].values
+        ]
+        # Print eval indices and corresponding filenames
+        print(f"eval_indices: {eval_indices}")
+        eval_filenames = [image_filenames[i] for i in eval_indices]
+        print(f"eval_filenames: {eval_filenames}")
+
         if split == "train":
-            indices = i_all
-        elif split in ["val", "test"]:
-            indices = i_eval
+            indices = train_indices
+        elif split == "val":
+            indices = eval_indices
         else:
             raise ValueError(f"Unknown dataparser split {split}")
 
@@ -202,10 +212,9 @@ class Phototourism(DataParser):
         cameras = cameras[indices]
         image_filenames = [image_filenames[i] for i in indices]
         metadata = {}
-        if self.config.load_3D_points:
-            metadata.update(
-                self._load_3D_points(colmap_path, transform_matrix, scale_factor)
-            )
+        metadata.update(
+            self._load_3D_points(colmap_path, transform_matrix, scale_factor)
+        )
         assert len(cameras) == len(image_filenames)
 
         dataparser_outputs = DataparserOutputs(
