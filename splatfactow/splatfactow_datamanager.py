@@ -27,7 +27,20 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
-from typing import Dict, ForwardRef, Generic, List, Literal, Optional, Tuple, Type, Union, cast, get_args, get_origin
+from typing import (
+    Dict,
+    ForwardRef,
+    Generic,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    cast,
+    get_args,
+    get_origin,
+)
 
 import cv2
 import numpy as np
@@ -36,10 +49,17 @@ from rich.progress import track
 from torch.nn import Parameter
 from typing_extensions import assert_never
 
-from nerfstudio.cameras.camera_utils import fisheye624_project, fisheye624_unproject_helper
+from nerfstudio.cameras.camera_utils import (
+    fisheye624_project,
+    fisheye624_unproject_helper,
+)
 from nerfstudio.cameras.cameras import Cameras, CameraType
 from nerfstudio.configs.dataparser_configs import AnnotatedDataParserUnion
-from nerfstudio.data.datamanagers.base_datamanager import DataManager, DataManagerConfig, TDataset
+from nerfstudio.data.datamanagers.base_datamanager import (
+    DataManager,
+    DataManagerConfig,
+    TDataset,
+)
 from nerfstudio.data.dataparsers.base_dataparser import DataparserOutputs
 from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
 from nerfstudio.data.datasets.base_dataset import InputDataset
@@ -50,7 +70,9 @@ from nerfstudio.utils.rich_utils import CONSOLE
 @dataclass
 class SplatfactoWDatamanagerConfig(DataManagerConfig):
     _target: Type = field(default_factory=lambda: SplatfactoWDatamanager)
-    dataparser: AnnotatedDataParserUnion = field(default_factory=NerfstudioDataParserConfig)
+    dataparser: AnnotatedDataParserUnion = field(
+        default_factory=NerfstudioDataParserConfig
+    )
     camera_res_scale_factor: float = 1.0
     """The scale factor for scaling spatial data such as images, mask, semantics
     along with relevant information about camera intrinsics
@@ -107,7 +129,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
             self.dataparser.downscale_factor = 1  # Avoid opening images
         self.includes_time = self.dataparser.includes_time
 
-        self.train_dataparser_outputs: DataparserOutputs = self.dataparser.get_dataparser_outputs(split="train")
+        self.train_dataparser_outputs: DataparserOutputs = (
+            self.dataparser.get_dataparser_outputs(split="train")
+        )
         self.train_dataset = self.create_train_dataset()
         self.eval_dataset = self.create_eval_dataset()
         if len(self.train_dataset) > 500 and self.config.cache_images == "gpu":
@@ -116,7 +140,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
                 style="bold yellow",
             )
             self.config.cache_images = "cpu"
-        self.exclude_batch_keys_from_device = self.train_dataset.exclude_batch_keys_from_device
+        self.exclude_batch_keys_from_device = (
+            self.train_dataset.exclude_batch_keys_from_device
+        )
         if self.config.masks_on_gpu is True:
             self.exclude_batch_keys_from_device.remove("mask")
         if self.config.images_on_gpu is True:
@@ -142,7 +168,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
         return self._load_images("eval", cache_images_device=self.config.cache_images)
 
     def _load_images(
-        self, split: Literal["train", "eval"], cache_images_device: Literal["cpu", "gpu"]
+        self,
+        split: Literal["train", "eval"],
+        cache_images_device: Literal["cpu", "gpu"],
     ) -> List[Dict[str, torch.Tensor]]:
         undistorted_images: List[Dict[str, torch.Tensor]] = []
 
@@ -161,7 +189,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
             #     f'The size of image ({data["image"].shape[1]}, {data["image"].shape[0]}) loaded '
             #     f'does not match the camera parameters ({camera.width.item(), camera.height.item()})'
             # )
-            if camera.distortion_params is None or torch.all(camera.distortion_params == 0):
+            if camera.distortion_params is None or torch.all(
+                camera.distortion_params == 0
+            ):
                 return data
             K = camera.get_intrinsics_matrices().numpy()
             distortion_params = camera.distortion_params.numpy()
@@ -220,7 +250,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
     def create_eval_dataset(self) -> TDataset:
         """Sets up the data loaders for evaluation"""
         return self.dataset_type(
-            dataparser_outputs=self.dataparser.get_dataparser_outputs(split=self.test_split),
+            dataparser_outputs=self.dataparser.get_dataparser_outputs(
+                split=self.test_split
+            ),
             scale_factor=self.config.camera_res_scale_factor,
         )
 
@@ -228,15 +260,15 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
     def dataset_type(self) -> Type[TDataset]:
         """Returns the dataset type passed as the generic argument"""
         default: Type[TDataset] = cast(TDataset, TDataset.__default__)  # type: ignore
-        orig_class: Type[FullImageDatamanager] = get_orig_class(self, default=None)  # type: ignore
-        if type(self) is FullImageDatamanager and orig_class is None:
+        orig_class: Type[SplatfactoWDatamanager] = get_orig_class(self, default=None)  # type: ignore
+        if type(self) is SplatfactoWDatamanager and orig_class is None:
             return default
-        if orig_class is not None and get_origin(orig_class) is FullImageDatamanager:
+        if orig_class is not None and get_origin(orig_class) is SplatfactoWDatamanager:
             return get_args(orig_class)[0]
 
         # For inherited classes, we need to find the correct type to instantiate
         for base in getattr(self, "__orig_bases__", []):
-            if get_origin(base) is FullImageDatamanager:
+            if get_origin(base) is SplatfactoWDatamanager:
                 for value in get_args(base):
                     if isinstance(value, ForwardRef):
                         if value.__forward_evaluated__:
@@ -271,7 +303,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
             data[i]["image"] = data[i]["image"].to(self.device)
             cameras.append(_cameras[i : i + 1])
             cameras[i].metadata = {"cam_idx": self.dataparser.find_eval_idx(i)}
-        assert len(self.eval_dataset.cameras.shape) == 1, "Assumes single batch dimension"
+        assert (
+            len(self.eval_dataset.cameras.shape) == 1
+        ), "Assumes single batch dimension"
         return list(zip(cameras, data))
 
     def get_param_groups(self) -> Dict[str, List[Parameter]]:
@@ -289,7 +323,9 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
         """Returns the next training batch
 
         Returns a Camera instead of raybundle"""
-        image_idx = self.train_unseen_cameras.pop(random.randint(0, len(self.train_unseen_cameras) - 1))
+        image_idx = self.train_unseen_cameras.pop(
+            random.randint(0, len(self.train_unseen_cameras) - 1)
+        )
         # Make sure to re-populate the unseen cameras list if we have exhausted it
         if len(self.train_unseen_cameras) == 0:
             self.train_unseen_cameras = [i for i in range(len(self.train_dataset))]
@@ -297,9 +333,14 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
         data = deepcopy(self.cached_train[image_idx])
         data["image"] = data["image"].to(self.device)
 
-        assert len(self.train_dataset.cameras.shape) == 1, "Assumes single batch dimension"
+        assert (
+            len(self.train_dataset.cameras.shape) == 1
+        ), "Assumes single batch dimension"
         camera = self.train_dataset.cameras[image_idx : image_idx + 1].to(self.device)
-        if data["image"].shape[1] != camera.width.item() or data["image"].shape[0] != camera.height.item():
+        if (
+            data["image"].shape[1] != camera.width.item()
+            or data["image"].shape[0] != camera.height.item()
+        ):
             CONSOLE.log(
                 f"Image shape: {data['image'].shape} does not match camera shape: {camera.width.item()} x {camera.height.item()}"
             )
@@ -329,18 +370,22 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
         Returns a Camera instead of raybundle
 
         TODO: Make sure this logic is consistent with the vanilladatamanager"""
-        image_idx = self.eval_unseen_cameras.pop(random.randint(0, len(self.eval_unseen_cameras) - 1))
+        image_idx = self.eval_unseen_cameras.pop(
+            random.randint(0, len(self.eval_unseen_cameras) - 1)
+        )
         # Make sure to re-populate the unseen cameras list if we have exhausted it
         if len(self.eval_unseen_cameras) == 0:
             self.eval_unseen_cameras = [i for i in range(len(self.eval_dataset))]
 
         data = deepcopy(self.cached_eval[image_idx])
         data["image"] = data["image"].to(self.device)
-        assert len(self.eval_dataset.cameras.shape) == 1, "Assumes single batch dimension"
+        assert (
+            len(self.eval_dataset.cameras.shape) == 1
+        ), "Assumes single batch dimension"
         camera = self.eval_dataset.cameras[image_idx : image_idx + 1].to(self.device)
         if camera.metadata is None:
-            camera.metadata={}
-        idx= self.dataparser.find_eval_idx(image_idx)
+            camera.metadata = {}
+        idx = self.dataparser.find_eval_idx(image_idx)
         camera.metadata["cam_idx"] = idx
         CONSOLE.log(f"Current eval image index: {idx}")
 
@@ -348,7 +393,11 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
 
 
 def _undistort_image(
-    camera: Cameras, distortion_params: np.ndarray, data: dict, image: np.ndarray, K: np.ndarray
+    camera: Cameras,
+    distortion_params: np.ndarray,
+    data: dict,
+    image: np.ndarray,
+    K: np.ndarray,
 ) -> Tuple[np.ndarray, np.ndarray, Optional[torch.Tensor]]:
     mask = None
     if camera.camera_type.item() == CameraType.PERSPECTIVE.value:
@@ -373,7 +422,9 @@ def _undistort_image(
         K[0, 2] = K[0, 2] - 0.5
         K[1, 2] = K[1, 2] - 0.5
         if np.any(distortion_params):
-            newK, roi = cv2.getOptimalNewCameraMatrix(K, distortion_params, (image.shape[1], image.shape[0]), 0)
+            newK, roi = cv2.getOptimalNewCameraMatrix(
+                K, distortion_params, (image.shape[1], image.shape[0]), 0
+            )
             image = cv2.undistort(image, K, distortion_params, None, newK)  # type: ignore
         else:
             newK = K
@@ -400,13 +451,23 @@ def _undistort_image(
         K[0, 2] = K[0, 2] - 0.5
         K[1, 2] = K[1, 2] - 0.5
         distortion_params = np.array(
-            [distortion_params[0], distortion_params[1], distortion_params[2], distortion_params[3]]
+            [
+                distortion_params[0],
+                distortion_params[1],
+                distortion_params[2],
+                distortion_params[3],
+            ]
         )
         newK = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(
             K, distortion_params, (image.shape[1], image.shape[0]), np.eye(3), balance=0
         )
         map1, map2 = cv2.fisheye.initUndistortRectifyMap(
-            K, distortion_params, np.eye(3), newK, (image.shape[1], image.shape[0]), cv2.CV_32FC1
+            K,
+            distortion_params,
+            np.eye(3),
+            newK,
+            (image.shape[1], image.shape[0]),
+            cv2.CV_32FC1,
         )
         # and then remap:
         image = cv2.remap(image, map1, map2, interpolation=cv2.INTER_LINEAR)
@@ -422,7 +483,14 @@ def _undistort_image(
         K = newK
     elif camera.camera_type.item() == CameraType.FISHEYE624.value:
         fisheye624_params = torch.cat(
-            [camera.fx, camera.fy, camera.cx, camera.cy, torch.from_numpy(distortion_params)], dim=0
+            [
+                camera.fx,
+                camera.fy,
+                camera.cx,
+                camera.cy,
+                torch.from_numpy(distortion_params),
+            ],
+            dim=0,
         )
         assert fisheye624_params.shape == (16,)
         assert (
@@ -447,8 +515,16 @@ def _undistort_image(
             params=fisheye624_params[None],
         ).squeeze(dim=0)
         fov_radians = torch.max(
-            torch.acos(torch.sum(upper * lower / torch.linalg.norm(upper) / torch.linalg.norm(lower))),
-            torch.acos(torch.sum(left * right / torch.linalg.norm(left) / torch.linalg.norm(right))),
+            torch.acos(
+                torch.sum(
+                    upper * lower / torch.linalg.norm(upper) / torch.linalg.norm(lower)
+                )
+            ),
+            torch.acos(
+                torch.sum(
+                    left * right / torch.linalg.norm(left) / torch.linalg.norm(right)
+                )
+            ),
         )
 
         # Heuristics to determine parameters of an undistorted image.
@@ -458,7 +534,9 @@ def _undistort_image(
         undist_K = torch.eye(3)
         undist_K[0, 0] = undistort_focal  # fx
         undist_K[1, 1] = undistort_focal  # fy
-        undist_K[0, 2] = (undist_w - 1) / 2.0  # cx; for a 1x1 image, center should be at (0, 0).
+        undist_K[0, 2] = (
+            undist_w - 1
+        ) / 2.0  # cx; for a 1x1 image, center should be at (0, 0).
         undist_K[1, 2] = (undist_h - 1) / 2.0  # cy
 
         # Undistorted 2D coordinates -> rays -> reproject to distorted UV coordinates.

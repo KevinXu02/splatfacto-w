@@ -4,14 +4,7 @@ Template Nerfstudio Field
 Currently this subclasses the NerfactoField. Consider subclassing the base Field.
 """
 
-from typing import Literal, Optional
-
-from torch import Tensor
-
-from nerfstudio.field_components.spatial_distortions import SpatialDistortion
-from nerfstudio.fields.nerfacto_field import NerfactoField  # for subclassing NerfactoField
-from nerfstudio.fields.base_field import Field  # for custom Field
-
+from typing import Literal
 
 import torch
 from torch import Tensor, nn
@@ -22,7 +15,7 @@ from nerfstudio.field_components.encodings import SHEncoding
 from nerfstudio.fields.base_field import Field, get_normalized_directions
 
 
-class BG_Field(Field):
+class BGField(Field):
     def __init__(self, appearance_embedding_dim: int, implementation="torch"):
         super().__init__()
         self.direction_encoding = SHEncoding(
@@ -40,18 +33,27 @@ class BG_Field(Field):
             implementation=implementation,
         )
 
-    def get_background_rgb(self, ray_bundle: RayBundle, appearance_embedding=None) -> Tensor:
+    def get_background_rgb(
+        self, ray_bundle: RayBundle, appearance_embedding=None
+    ) -> Tensor:
         """Predicts background colors at infinity."""
         directions = get_normalized_directions(ray_bundle.directions)
         directions_flat = self.direction_encoding(directions.view(-1, 3))
         if appearance_embedding is not None:
-            x = torch.cat([directions_flat, appearance_embedding.repeat(directions_flat.shape[0], 1)], dim=-1)
+            x = torch.cat(
+                [
+                    directions_flat,
+                    appearance_embedding.repeat(directions_flat.shape[0], 1),
+                ],
+                dim=-1,
+            )
         else:
             x = directions_flat
 
         background_rgb = self.mlp_background_color(x).to(directions)
 
         return background_rgb
+
 
 class SplatfactoWField(Field):
     def __init__(
@@ -72,5 +74,7 @@ class SplatfactoWField(Field):
         )
 
     def forward(self, appearance_embed: Tensor, appearance_features: Tensor):
-        color_out = self.color_nn(torch.cat((appearance_embed, appearance_features), dim=-1))
+        color_out = self.color_nn(
+            torch.cat((appearance_embed, appearance_features), dim=-1)
+        )
         return color_out

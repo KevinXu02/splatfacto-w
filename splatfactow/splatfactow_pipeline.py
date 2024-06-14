@@ -10,8 +10,10 @@ import torch.distributed as dist
 from torch.cuda.amp.grad_scaler import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-from method_template.template_datamanager import TemplateDataManagerConfig
-from method_template.template_model import TemplateModel, TemplateModelConfig
+# from method_template.template_datamanager import TemplateDataManagerConfig
+# from method_template.template_model import TemplateModel, TemplateModelConfig
+from splatfactow.splatfactow_datamanager import SplatfactoWDataManagerConfig
+from splatfactow.splatfactow_model import SplatfactoWModel, SplatfactoWModelConfig
 from nerfstudio.data.datamanagers.base_datamanager import (
     DataManager,
     DataManagerConfig,
@@ -24,18 +26,18 @@ from nerfstudio.pipelines.base_pipeline import (
 
 
 @dataclass
-class TemplatePipelineConfig(VanillaPipelineConfig):
+class SplatfactoWPipelineConfig(VanillaPipelineConfig):
     """Configuration for pipeline instantiation"""
 
-    _target: Type = field(default_factory=lambda: TemplatePipeline)
+    _target: Type = field(default_factory=lambda: SplatfactoWPipeline)
     """target class to instantiate"""
-    datamanager: DataManagerConfig = TemplateDataManagerConfig()
+    datamanager: DataManagerConfig = SplatfactoWDataManagerConfig()
     """specifies the datamanager config"""
-    model: ModelConfig = TemplateModelConfig()
+    model: ModelConfig = SplatfactoWModelConfig()
     """specifies the model config"""
 
 
-class TemplatePipeline(VanillaPipeline):
+class SplatfactoWPipeline(VanillaPipeline):
     """Template Pipeline
 
     Args:
@@ -44,7 +46,7 @@ class TemplatePipeline(VanillaPipeline):
 
     def __init__(
         self,
-        config: TemplatePipelineConfig,
+        config: SplatfactoWPipelineConfig,
         device: str,
         test_mode: Literal["test", "val", "inference"] = "val",
         world_size: int = 1,
@@ -55,7 +57,10 @@ class TemplatePipeline(VanillaPipeline):
         self.config = config
         self.test_mode = test_mode
         self.datamanager: DataManager = config.datamanager.setup(
-            device=device, test_mode=test_mode, world_size=world_size, local_rank=local_rank
+            device=device,
+            test_mode=test_mode,
+            world_size=world_size,
+            local_rank=local_rank,
         )
         self.datamanager.to(device)
 
@@ -72,6 +77,7 @@ class TemplatePipeline(VanillaPipeline):
         self.world_size = world_size
         if world_size > 1:
             self._model = typing.cast(
-                TemplateModel, DDP(self._model, device_ids=[local_rank], find_unused_parameters=True)
+                SplatfactoWModel,
+                DDP(self._model, device_ids=[local_rank], find_unused_parameters=True),
             )
             dist.barrier(device_ids=[local_rank])
