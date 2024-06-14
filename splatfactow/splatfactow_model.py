@@ -829,44 +829,24 @@ class SplatfactoWModel(Model):
                 torch.tensor(0, device=self.device)
             )
 
-        optimized_camera_to_world = self.camera_optimizer.apply_to_camera(camera)[
-            0, ...
-        ]
-
         if self.training:
             assert camera.shape[0] == 1, "Only one camera at a time"
             optimized_camera_to_world = self.camera_optimizer.apply_to_camera(camera)
         else:
             optimized_camera_to_world = camera.camera_to_worlds
 
-        if self.crop_box is not None and not self.training:
-            crop_ids = self.crop_box.within(self.means).squeeze()
-            if crop_ids.sum() == 0:
-                return self.get_empty_outputs(
-                    int(camera.width.item()),
-                    int(camera.height.item()),
-                    self.background_color,
-                )
-        else:
-            crop_ids = None
         camera_scale_fac = self._get_downscale_factor()
         camera.rescale_output_resolution(1 / camera_scale_fac)
         viewmat = get_viewmat(optimized_camera_to_world)
         W, H = int(camera.width.item()), int(camera.height.item())
         self.last_size = (H, W)
 
-        if crop_ids is not None:
-            opacities_crop = self.opacities[crop_ids]
-            means_crop = self.means[crop_ids]
-            appearance_features_crop = self.appearance_features[crop_ids]
-            scales_crop = self.scales[crop_ids]
-            quats_crop = self.quats[crop_ids]
-        else:
-            opacities_crop = self.opacities
-            means_crop = self.means
-            appearance_features_crop = self.appearance_features
-            scales_crop = self.scales
-            quats_crop = self.quats
+        opacities_crop = self.opacities
+        means_crop = self.means
+        appearance_features_crop = self.appearance_features
+        scales_crop = self.scales
+        quats_crop = self.quats
+
         BLOCK_WIDTH = (
             16  # this controls the tile size of rasterization, 16 is a good default
         )
@@ -1130,12 +1110,22 @@ class SplatfactoWModel(Model):
         Returns:
             A dictionary of metrics.
         """
+
         gt_rgb = self.composite_with_background(
             self.get_gt_img(batch["image"]), outputs["background"]
         )
         predicted_rgb = outputs["rgb"]
-
         combined_rgb = torch.cat([gt_rgb, predicted_rgb], dim=1)
+
+        # hacked version, only eval on the right half of the image
+        # cut the image in half,HW3
+        gt_rgb = gt_rgb[:, gt_rgb.shape[1] // 2 :, :]
+        predicted_rgb = predicted_rgb[:, predicted_rgb.shape[1] // 2 :, :]
+
+        # cv2.imwrite("gt.png", (gt_rgb.detach().cpu().numpy() * 255).astype(np.uint8))
+        # cv2.imwrite("p.png", (predicted_rgb.detach().cpu().numpy() * 255).astype(np.uint8))
+        # cv2.imwrite("c.png", (combined_rgb.detach().cpu().numpy() * 255).astype(np.uint8))
+        # exit()
 
         # Switch images from [H, W, C] to [1, C, H, W] for metrics computations
         gt_rgb = torch.moveaxis(gt_rgb, -1, 0)[None, ...]
