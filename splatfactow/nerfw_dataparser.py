@@ -143,31 +143,26 @@ class NerfW(DataParser):
         # kick lines that is NA
         split_data = split_data.dropna()
 
+        all_indices = torch.arange(len(image_filenames))
         # Create a mapping from image filenames to indices
-        filename_to_index = {img.name: idx for idx, img in enumerate(imgs.values())}
-
-        # Get train and test indices based on filenames
-        train_indices = torch.tensor(
-            [filename_to_index[name] for name in split_data["filename"].values]
-        )
+        filename_to_index = {name: idx for idx, name in enumerate(image_filenames)}
+        # Get the indices of the eval set in all indices
         eval_indices = torch.tensor(
             [
-                filename_to_index[name]
+                filename_to_index[self.data / "dense/images" / name]
                 for name in split_data[split_data["split"] == "test"]["filename"].values
-            ]
+            ],
+            dtype=torch.long,
         )
 
-        self.i_eval = [
-            filename_to_index[name]
-            for name in split_data[split_data["split"] == "test"]["filename"].values
-        ]
+        self.i_eval = eval_indices.tolist()
         # Print eval indices and corresponding filenames
         print(f"eval_indices: {eval_indices}")
         eval_filenames = [image_filenames[i] for i in eval_indices]
         print(f"eval_filenames: {eval_filenames}")
 
         if split == "train":
-            indices = train_indices
+            indices = all_indices
         elif split == "val":
             indices = eval_indices
         else:
