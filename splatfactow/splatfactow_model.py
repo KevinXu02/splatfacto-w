@@ -259,7 +259,7 @@ class SplatfactoWModel(Model):
             # We can have colors without points.
             and self.seed_points[1].shape[0] > 0
         ):
-            colors=torch.logit(self.seed_points[1]/255,eps=1e-10).float().cuda()
+            colors = torch.logit(self.seed_points[1] / 255, eps=1e-10).float().cuda()
         else:
             colors = torch.nn.Parameter(
                 torch.zeros((num_points, 3), device=self.device)
@@ -356,7 +356,7 @@ class SplatfactoWModel(Model):
     @property
     def appearance_features(self):
         return self.gauss_params["appearance_features"]
-    
+
     @property
     def base_colors(self):
         return self.gauss_params["colors"]
@@ -375,7 +375,14 @@ class SplatfactoWModel(Model):
         if "means" in dict:
             # For backwards compatibility, we remap the names of parameters from
             # means->gauss_params.means since old checkpoints have that format
-            for p in ["means", "scales", "quats", "appearance_features", "opacities","colors"]:
+            for p in [
+                "means",
+                "scales",
+                "quats",
+                "appearance_features",
+                "opacities",
+                "colors",
+            ]:
                 dict[f"gauss_params.{p}"] = dict[p]
         newp = dict["gauss_params.means"].shape[0]
         for name, param in self.gauss_params.items():
@@ -684,7 +691,7 @@ class SplatfactoWModel(Model):
         new_means = rotated_samples + self.means[split_mask].repeat(samps, 1)
         # step 2, sample new colors
         new_appearance_features = self.appearance_features[split_mask].repeat(samps, 1)
-        new_colors = self.colors[split_mask].repeat(samps, 1)
+        new_colors = self.base_colors[split_mask].repeat(samps, 1)
         # step 3, sample new opacities
         new_opacities = self.opacities[split_mask].repeat(samps, 1)
         # step 4, sample new scales
@@ -865,7 +872,7 @@ class SplatfactoWModel(Model):
         appearance_features = self.appearance_features
         scales = self.scales
         quats = self.quats
-        base_colors=self.base_colors
+        base_colors = self.base_colors
 
         BLOCK_WIDTH = (
             16  # this controls the tile size of rasterization, 16 is a good default
@@ -878,13 +885,13 @@ class SplatfactoWModel(Model):
             render_mode = "RGB+ED"
         else:
             render_mode = "RGB"
-        view_dirs=means-optimized_camera_to_world[0][None,:3,3]
-        
+        view_dirs = means - optimized_camera_to_world[0][None, :3, 3]
+
         colors = self.color_nn(
             appearance_embed.repeat(appearance_features.shape[0], 1),
             appearance_features,
             view_dir=view_dirs,
-            base_color=base_colors
+            base_color=base_colors,
         ).float()
 
         render, alpha, info = rasterization(
