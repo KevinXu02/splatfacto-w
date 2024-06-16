@@ -21,6 +21,7 @@ https://kevinxu02.github.io/gsw.github.io/
 import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, Tuple, Type, Union
+from nerfstudio.cameras.camera_utils import normalize
 from splatfactow.splatfactow_field import BGField, SplatfactoWField
 
 import numpy as np
@@ -196,6 +197,8 @@ class SplatfactoWModelConfig(ModelConfig):
     """Whether to enable the 2d background model"""
     implementation: Literal["tcnn", "torch"] = "tcnn"
     """Implementation of the background model"""
+    use_view_dir: bool = True
+    """Whether to use view direction in the color field"""
     appearance_embed_dim: int = 48
     """Dimension of the appearance embedding, if 0, no appearance embedding is used"""
     enable_alpha_loss: bool = True
@@ -318,7 +321,7 @@ class SplatfactoWModel(Model):
             appearance_embed_dim=self.config.appearance_embed_dim,
             appearance_features_dim=self.config.appearance_features_dim,
             implementation=self.config.implementation,
-            use_view_dir=True,
+            use_view_dir=self.config.use_view_dir,
             sh_levels=4,
         )
 
@@ -885,12 +888,11 @@ class SplatfactoWModel(Model):
             render_mode = "RGB+ED"
         else:
             render_mode = "RGB"
-        view_dirs = means - optimized_camera_to_world[0][None, :3, 3]
 
         colors = self.color_nn(
             appearance_embed.repeat(appearance_features.shape[0], 1),
             appearance_features,
-            view_dir=view_dirs,
+            view_dir=normalize(means - optimized_camera_to_world[0][None, :3, 3]),
             base_color=base_colors,
         ).float()
 
