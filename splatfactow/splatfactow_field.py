@@ -61,20 +61,53 @@ class SplatfactoWField(Field):
         appearance_embed_dim,
         appearance_features_dim,
         implementation: Literal["tcnn", "torch"] = "torch",
+        use_view_dir=True,
+        sh_levels=4,
     ):
         super().__init__()
-        self.color_nn = MLP(
-            in_dim=appearance_embed_dim + appearance_features_dim,
-            num_layers=2,
-            layer_width=256,
-            out_dim=3,
-            activation=nn.ReLU(),
-            out_activation=nn.Sigmoid(),
-            implementation=implementation,
+        if use_view_dir:
+            self.direction_encoding = SHEncoding(
+                levels=sh_levels,
+                implementation=implementation,
+            )
+            dir_dim=self.direction_encoding.get_out_dim()
+        else:
+            self.direction_encoding = None
+            dir_dim=0
+
+        # self.color_nn = MLP(
+        #     in_dim=appearance_embed_dim + appearance_features_dim+dir_dim,
+        #     num_layers=2,
+        #     layer_width=256,
+        #     out_dim=3,
+        #     activation=nn.ReLU(),
+        #     out_activation=nn.Sigmoid(),
+        #     implementation=implementation,
+        # )
+
+        self.color_nn = nn.Sequential(
+            nn.Linear(appearance_embed_dim + appearance_features_dim + dir_dim, 256),
+            nn.ReLU(),
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 3),
         )
 
-    def forward(self, appearance_embed: Tensor, appearance_features: Tensor):
-        color_out = self.color_nn(
-            torch.cat((appearance_embed, appearance_features), dim=-1)
-        )
+        #zero init the last layer
+        self.color_nn[-1].weight.data.zero_()
+        self.color_nn[-1].bias.data.zero_()
+
+
+    def forward(self, appearance_embed: Tensor, appearance_features: Tensor,base_color: Tensor, view_dir: Tensor = None) -> Tensor:
+        if self.direction_encoding is not None:
+            view_dir_flat = self.direction_encoding(view_dir.view(-1, 3))
+            color_out = self.color_nn(
+                torch.cat((appearance_embed, appearance_features, view_dir_flat), dim=-1)
+            )
+            color_out=torch.sigmoid(color_out+base_color)
+        else:
+            color_out = self.color_nn(
+                torch.cat((appearance_embed, appearance_features), dim=-1)
+            ).float()
+            color_out=torch.sigmoid(color_out+base_color)
         return color_out
