@@ -322,7 +322,7 @@ class SplatfactoWModel(Model):
             appearance_features_dim=self.config.appearance_features_dim,
             implementation=self.config.implementation,
             use_view_dir=self.config.use_view_dir,
-            sh_levels=4,
+            sh_levels=3,
         )
 
     # @property
