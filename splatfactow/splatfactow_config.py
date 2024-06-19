@@ -95,8 +95,8 @@ splatfactow_config = MethodSpecification(
     ),
 )
 
-splatfactow_config = MethodSpecification(
-    description="Splatfacto in the wild",
+splatfactow_config_1 = MethodSpecification(
+    description="Splatfacto in the wild gradacc",
     config=TrainerConfig(
         method_name="splatfacto-w-gradacc",
         steps_per_eval_image=100,

@@ -958,8 +958,9 @@ class SplatfactoWModel(Model):
         else:
             rgb = render[:, ..., :3] + (1 - alpha) * background
 
-        rgb = torch.clamp(rgb, 0.0, 1.0)
         camera.rescale_output_resolution(camera_scale_fac)  # type: ignore
+        rgb = torch.clamp(rgb, 0.0, 1.0)
+
         # depth image
         if render_mode == "RGB+ED":
             depth_im = render[:, ..., 3:4]
@@ -1097,7 +1098,7 @@ class SplatfactoWModel(Model):
             alpha_mask = bg_mask > 0.6
             # prevent NaN
             if alpha_mask.sum() != 0:
-                alpha_loss = alpha[alpha_mask].mean() * 0.1
+                alpha_loss = alpha[alpha_mask].mean() * 0.15
         else:
             alpha_loss = torch.tensor(0.0).to(self.device)
 

@@ -110,9 +110,16 @@ class NerfW(DataParser):
         flip[0, 0] = -1.0
         flip = flip.double()
 
+        # Load the TSV file to get the train/eval split
+        split_file = self.data / f"{self.config.data_name}.tsv"
+        split_data = pd.read_csv(split_file, sep="\t")
+        # kick lines that is NA
+        split_data = split_data.dropna()
+
         for _id, cam in cams.items():
             img = imgs[_id]
-
+            if img.name not in split_data[:]["filename"].values:
+                continue
             assert (
                 cam.model == "PINHOLE"
             ), "Only pinhole (perspective) camera model is supported at the moment"
@@ -137,12 +144,6 @@ class NerfW(DataParser):
         cxs = torch.stack(cxs).float()
         cys = torch.stack(cys).float()
 
-        # Load the TSV file to get the train/eval split
-        split_file = self.data / f"{self.config.data_name}.tsv"
-        split_data = pd.read_csv(split_file, sep="\t")
-        # kick lines that is NA
-        split_data = split_data.dropna()
-
         all_indices = torch.arange(len(image_filenames))
         # Create a mapping from image filenames to indices
         filename_to_index = {name: idx for idx, name in enumerate(image_filenames)}
@@ -151,7 +152,7 @@ class NerfW(DataParser):
             filename_to_index[self.data / "dense/images" / name]
             for name in split_data[split_data["split"] == "test"]["filename"].values
         ]
-        eval_indices.sort()
+
         eval_indices = torch.tensor(
             eval_indices,
             dtype=torch.long,
@@ -208,9 +209,10 @@ class NerfW(DataParser):
         cameras = cameras[indices]
         image_filenames = [image_filenames[i] for i in indices]
         metadata = {}
-        metadata.update(
-            self._load_3D_points(colmap_path, transform_matrix, scale_factor)
-        )
+        if split == "train":
+            metadata.update(
+                self._load_3D_points(colmap_path, transform_matrix, scale_factor)
+            )
         assert len(cameras) == len(image_filenames)
 
         dataparser_outputs = DataparserOutputs(

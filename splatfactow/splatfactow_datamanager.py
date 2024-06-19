@@ -230,13 +230,13 @@ class SplatfactoWDatamanager(DataManager, Generic[TDataset]):
                 cache["image"] = cache["image"].to(self.device)
                 if "mask" in cache:
                     cache["mask"] = cache["mask"].to(self.device)
-        # elif cache_images_device == "cpu":
-        #     for cache in undistorted_images:
-        #         cache["image"] = cache["image"].pin_memory()
-        #         if "mask" in cache:
-        #             cache["mask"] = cache["mask"].pin_memory()
-        # else:
-        #     assert_never(cache_images_device)
+        elif cache_images_device == "cpu":
+            for cache in undistorted_images:
+                cache["image"] = cache["image"].pin_memory()
+                if "mask" in cache:
+                    cache["mask"] = cache["mask"].pin_memory()
+        else:
+            assert_never(cache_images_device)
 
         return undistorted_images
 
