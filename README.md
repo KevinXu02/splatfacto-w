@@ -20,5 +20,5 @@ ns-train splatfacto-w --data [PATH]
 
 If you want to train datasets without nerf-w's train/test split:
 ```
-ns-train splatfacto-w --data [PATH] phototourism-data --load-3d-points=True
+ns-train splatfacto-w --data [PATH] colmap 
 ```
