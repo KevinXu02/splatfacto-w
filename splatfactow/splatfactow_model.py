@@ -197,8 +197,6 @@ class SplatfactoWModelConfig(ModelConfig):
     """Whether to enable the 2d background model"""
     implementation: Literal["tcnn", "torch"] = "tcnn"
     """Implementation of the background model"""
-    use_view_dir: bool = True
-    """Whether to use view direction in the color field"""
     appearance_embed_dim: int = 48
     """Dimension of the appearance embedding, if 0, no appearance embedding is used"""
     enable_alpha_loss: bool = True
@@ -215,6 +213,12 @@ class SplatfactoWModelConfig(ModelConfig):
     """Whether to mask out the upper part of the image, which is usually the sky"""
     start_robust_mask_at: int = 6000
     """The step to start masking"""
+    sh_degree_interval: int = 2000
+    """The interval to increase the SH degree"""
+    sh_degree: int = 3
+    """The degree of SH to use for the color field"""
+    bg_sh_degree: int = 3
+    """The degree of SH to use for the background model"""
 
 
 class SplatfactoWModel(Model):
@@ -262,7 +266,9 @@ class SplatfactoWModel(Model):
             # We can have colors without points.
             and self.seed_points[1].shape[0] > 0
         ):
-            colors = torch.logit(self.seed_points[1] / 255, eps=1e-10).float().cuda()
+            # colors = torch.logit(self.seed_points[1] / 255, eps=1e-10).float().cuda()
+            # rgb values of the seed points are in [0, 1] range
+            colors = torch.nn.Parameter(self.seed_points[1] / 255).float().cuda()
         else:
             colors = torch.nn.Parameter(
                 torch.zeros((num_points, 3), device=self.device)
@@ -321,7 +327,6 @@ class SplatfactoWModel(Model):
             appearance_embed_dim=self.config.appearance_embed_dim,
             appearance_features_dim=self.config.appearance_features_dim,
             implementation=self.config.implementation,
-            use_view_dir=self.config.use_view_dir,
             sh_levels=3,
         )
 
@@ -780,11 +785,16 @@ class SplatfactoWModel(Model):
         self.camera_optimizer.get_param_groups(param_groups=gps)
         if self.config.enable_bg_model:
             assert self.bg_model is not None
-            gps["field_background"] = list(self.bg_model.parameters())
+            gps["field_background_encoder"] = list(self.bg_model.encoder.parameters())
+            gps["field_background_base"] = list(self.bg_model.sh_base_head.parameters())
+            gps["field_background_rest"] = list(self.bg_model.sh_rest_head.parameters())
         assert self.color_nn is not None
         assert self.appearance_embeds is not None
         gps["appearance_embed"] = list(self.appearance_embeds.parameters())
-        gps["appearance_model"] = list(self.color_nn.parameters())
+        gps["appearance_model_encoder"] = list(self.color_nn.encoder.parameters())
+        gps["appearance_model_base"] = list(self.color_nn.sh_base_head.parameters())
+        gps["appearance_model_rest"] = list(self.color_nn.sh_rest_head.parameters())
+
         return gps
 
     def _get_downscale_factor(self):
@@ -847,6 +857,15 @@ class SplatfactoWModel(Model):
             print("Called get_outputs with not a camera")
             return {}
 
+        if self.config.sh_degree > 0:
+            sh_degree_to_use = min(
+                self.step // self.config.sh_degree_interval, self.config.sh_degree
+            )
+            bg_sh_degree_to_use = min(
+                self.step // (self.config.sh_degree_interval // 2),
+                self.config.bg_sh_degree,
+            )
+
         # get the appearance embedding
         if camera.metadata is not None and "cam_idx" in camera.metadata:
             cam_idx = camera.metadata["cam_idx"]
@@ -875,7 +894,7 @@ class SplatfactoWModel(Model):
         appearance_features = self.appearance_features
         scales = self.scales
         quats = self.quats
-        base_colors = self.base_colors
+        # base_colors = self.base_colors
 
         BLOCK_WIDTH = (
             16  # this controls the tile size of rasterization, 16 is a good default
@@ -892,8 +911,6 @@ class SplatfactoWModel(Model):
         colors = self.color_nn(
             appearance_embed.repeat(appearance_features.shape[0], 1),
             appearance_features,
-            view_dir=normalize(means - optimized_camera_to_world[0][None, :3, 3]),
-            base_color=base_colors,
         ).float()
 
         render, alpha, info = rasterization(
@@ -911,7 +928,7 @@ class SplatfactoWModel(Model):
             near_plane=0.01,
             far_plane=1e10,
             render_mode=render_mode,
-            sh_degree=None,
+            sh_degree=sh_degree_to_use,
             sparse_grad=False,
             absgrad=True,
             rasterize_mode=self.config.rasterize_mode,
@@ -925,38 +942,32 @@ class SplatfactoWModel(Model):
         alpha = alpha[:, ...]
 
         # background
-        background = self._get_background_color()
+
         if self.config.enable_bg_model:
             # the following code uses the background model to predict the background color
             # only predict background where alpha < 0.98 for faster inference
             # use first num_downscales*resolution_schedule steps to clean up the background in the beginning
-            if (
-                self.step < self.config.num_downscales * self.config.resolution_schedule
-                and self.training
-            ):
-                mask = torch.ones(H, W, device=self.device, dtype=torch.bool)
-            else:
-                mask = (alpha < 0.98).view(H, W)
+            # if (
+            #     self.step < self.config.num_downscales * self.config.resolution_schedule
+            #     and self.training
+            # ):
+            #     mask = torch.ones(H, W, device=self.device, dtype=torch.bool)
+            # else:
+            #     mask = (alpha < 0.98).view(H, W)
 
-            coords_y, coords_x = torch.nonzero(mask, as_tuple=True)
-            coords = torch.stack([coords_y, coords_x], dim=-1).float()
-            if coords.shape[0] > 0:
-                ray_bundle = camera.generate_rays(
-                    camera_indices=0, keep_shape=False, coords=coords
-                )
-                # Background processing
-                background = torch.zeros(H * W, 3, device=self.device)
-                flat_mask = mask.view(-1)
-                assert self.bg_model is not None
-                background[flat_mask] = self.bg_model.get_background_rgb(
-                    ray_bundle, appearance_embed
-                ).float()
-                background = background.view(1, H, W, 3)
-                rgb = render[:, ..., :3] + (1 - alpha) * background
-            else:
-                rgb = render[:, ..., :3]
+            # coords_y, coords_x = torch.nonzero(mask, as_tuple=True)
+            # coords = torch.stack([coords_y, coords_x], dim=-1).float()
+            ray_bundle = camera.generate_rays(camera_indices=0, keep_shape=False)
+            # Background processing
+            assert self.bg_model is not None
+            background = self.bg_model.get_background_rgb(
+                ray_bundle, appearance_embed, num_sh=bg_sh_degree_to_use
+            ).float()
+            background = background.view(1, H, W, 3)
         else:
-            rgb = render[:, ..., :3] + (1 - alpha) * background
+            background = self._get_background_color().view(1, 1, 1, 3)
+
+        rgb = render[:, ..., :3] + (1 - alpha) * background
 
         camera.rescale_output_resolution(camera_scale_fac)  # type: ignore
         rgb = torch.clamp(rgb, 0.0, 1.0)

@@ -71,16 +71,40 @@ splatfactow_config = MethodSpecification(
                     lr_final=5e-5, max_steps=30000
                 ),
             },
-            "field_background": {
+            "field_background_encoder": {
                 "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
                     lr_final=1e-4, max_steps=30000
                 ),
             },
-            "appearance_model": {
+            "field_background_base": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=2e-4, max_steps=30000
+                ),
+            },
+            "field_background_rest": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 20, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=2e-4 / 20, max_steps=30000
+                ),
+            },
+            "appearance_model_encoder": {
                 "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
                     lr_final=1e-4, max_steps=30000
+                ),
+            },
+            "appearance_model_base": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4, max_steps=30000
+                ),
+            },
+            "appearance_model_rest": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 20, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4 / 20, max_steps=30000
                 ),
             },
             "appearance_embed": {
