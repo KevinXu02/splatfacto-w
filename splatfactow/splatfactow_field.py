@@ -57,6 +57,13 @@ class BGField(Field):
 
         return colors
 
+    def get_sh_coeffs(self, appearance_embedding=None) -> Tensor:
+        x = self.encoder(appearance_embedding)
+        base_color = self.sh_base_head(x)
+        sh_rest = self.sh_rest_head(x)
+        sh_coeffs = torch.cat([base_color, sh_rest], dim=-1).view(-1, self.sh_dim, 3)
+        return sh_coeffs
+
 
 class SplatfactoWField(Field):
     def __init__(

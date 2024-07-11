@@ -18,6 +18,7 @@ Gaussian Splatting Model in the Wild implementation in nerfstudio.
 https://kevinxu02.github.io/gsw.github.io/
 """
 
+from gsplat.cuda._wrapper import spherical_harmonics
 import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, Tuple, Type, Union
@@ -319,6 +320,7 @@ class SplatfactoWModel(Model):
             self.bg_model = BGField(
                 appearance_embedding_dim=self.config.appearance_embed_dim,
                 implementation=self.config.implementation,
+                sh_levels=self.config.bg_sh_degree,
             )
         else:
             self.bg_model = None
@@ -327,8 +329,13 @@ class SplatfactoWModel(Model):
             appearance_embed_dim=self.config.appearance_embed_dim,
             appearance_features_dim=self.config.appearance_features_dim,
             implementation=self.config.implementation,
-            sh_levels=3,
+            sh_levels=self.config.sh_degree,
         )
+
+        self.cached_colors = None
+        self.cached_bg_sh = None
+        self.last_cam_idx = None
+        self.cached_dirs = {}
 
     # @property
     # def colors(self):
@@ -869,6 +876,11 @@ class SplatfactoWModel(Model):
         # get the appearance embedding
         if camera.metadata is not None and "cam_idx" in camera.metadata:
             cam_idx = camera.metadata["cam_idx"]
+            if self.last_cam_idx is not None:
+                use_cached_sh = cam_idx == self.last_cam_idx
+            else:
+                use_cached_sh = False
+            self.last_cam_idx = cam_idx
             appearance_embed = self.appearance_embeds(
                 torch.tensor(cam_idx, device=self.device)
             )
@@ -908,10 +920,14 @@ class SplatfactoWModel(Model):
         else:
             render_mode = "RGB"
 
-        colors = self.color_nn(
-            appearance_embed.repeat(appearance_features.shape[0], 1),
-            appearance_features,
-        ).float()
+        if use_cached_sh and not self.training and self.cached_colors is not None:
+            colors = self.cached_colors
+        else:
+            colors = self.color_nn(
+                appearance_embed.repeat(appearance_features.shape[0], 1),
+                appearance_features,
+            ).float()
+            self.cached_colors = colors
 
         render, alpha, info = rasterization(
             means=means,
@@ -944,25 +960,39 @@ class SplatfactoWModel(Model):
         # background
 
         if self.config.enable_bg_model:
-            # the following code uses the background model to predict the background color
-            # only predict background where alpha < 0.98 for faster inference
-            # use first num_downscales*resolution_schedule steps to clean up the background in the beginning
             # if (
-            #     self.step < self.config.num_downscales * self.config.resolution_schedule
+            #     self.step > self.config.num_downscales * self.config.resolution_schedule
             #     and self.training
             # ):
-            #     mask = torch.ones(H, W, device=self.device, dtype=torch.bool)
-            # else:
-            #     mask = (alpha < 0.98).view(H, W)
+            #     # cache directions in training, hope this won't cause memory issue
+            #     if self.last_cam_idx not in self.cached_dirs:
+            #         directions = normalize(
+            #             camera.generate_rays(
+            #                 camera_indices=0, keep_shape=False
+            #             ).directions
+            #         ).pin_memory()
+            #         self.cached_dirs[self.last_cam_idx] = directions
+            #     else:
+            #         directions = self.cached_dirs[self.last_cam_idx]
 
-            # coords_y, coords_x = torch.nonzero(mask, as_tuple=True)
-            # coords = torch.stack([coords_y, coords_x], dim=-1).float()
-            ray_bundle = camera.generate_rays(camera_indices=0, keep_shape=False)
-            # Background processing
-            assert self.bg_model is not None
-            background = self.bg_model.get_background_rgb(
-                ray_bundle, appearance_embed, num_sh=bg_sh_degree_to_use
-            ).float()
+            # else:
+            directions = normalize(
+                camera.generate_rays(camera_indices=0, keep_shape=False).directions
+            )
+
+            if use_cached_sh and not self.training and self.cached_bg_sh is not None:
+                bg_sh_coeffs = self.cached_bg_sh
+            else:
+                bg_sh_coeffs = self.bg_model.get_sh_coeffs(
+                    appearance_embedding=appearance_embed
+                )
+                self.cached_bg_sh = bg_sh_coeffs
+
+            background = spherical_harmonics(
+                degrees_to_use=bg_sh_degree_to_use,
+                coeffs=bg_sh_coeffs.repeat(directions.shape[0], 1, 1),
+                dirs=directions,
+            )
             background = background.view(1, H, W, 3)
         else:
             background = self._get_background_color().view(1, 1, 1, 3)
