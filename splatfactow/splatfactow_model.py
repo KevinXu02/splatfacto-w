@@ -271,9 +271,7 @@ class SplatfactoWModel(Model):
             # rgb values of the seed points are in [0, 1] range
             colors = torch.nn.Parameter(self.seed_points[1] / 255).float().cuda()
         else:
-            colors = torch.nn.Parameter(
-                torch.zeros((num_points, 3), device=self.device)
-            )
+            colors = torch.nn.Parameter(torch.zeros((num_points, 3))).cuda()
 
         opacities = torch.nn.Parameter(torch.logit(0.1 * torch.ones(num_points, 1)))
         self.gauss_params = torch.nn.ParameterDict(
@@ -1220,7 +1218,7 @@ class SplatfactoWModel(Model):
 
     @torch.no_grad()
     def robust_mask(self, errors: torch.Tensor):
-        """Computes RobustNeRF mask.
+        """Computes Robust Mask.
 
         Args:
             errors: f32[h,w,c]. Per-subpixel errors.
