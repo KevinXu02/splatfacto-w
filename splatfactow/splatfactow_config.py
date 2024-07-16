@@ -152,6 +152,7 @@ splatfactow_light_config = MethodSpecification(
                 enable_bg_model=False,
                 enable_alpha_loss=False,
                 enable_robust_mask=False,
+                never_mask_upper=0.0,
             ),
         ),
         optimizers={
