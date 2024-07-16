@@ -1,5 +1,5 @@
 # Splatfacto-W: A Nerfstudio Implementation of Gaussian Splatting for In the Wild Captures
-An official implementation for [Splatfacto-W](https://kevinxu02.github.io/gsw.github.io/)
+An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatfactow/)
 
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
@@ -11,14 +11,29 @@ pip install -e .
 ns-install-cli
 ```
 
-## Running the new method
-To train with it, download the train/test tsv file from the bottom of [nerf-w](https://nerf-w.github.io/) and put it under the data folder (or copy them from `.\splatfacto-w\dataset_split`). For instance, for Brandenburg Gate the path would be `splatfacto-w\data\brandenburg_gate\brandenburg.tsv`.
+## Downloading data
+You can download the phototourism dataset from running.
+```
+ns-download-data phototourism --capture-name <capture_name>
+```
+
+## Running Splafacto-w
+To train with it, download the train/test tsv file from the bottom of [nerf-w](https://nerf-w.github.io/) and put it under the data folder (or copy them from `./splatfacto-w/dataset_split`). For instance, for Brandenburg Gate the path would be `your-data-folder/brandenburg_gate/brandenburg.tsv`. You should have the following structure in your data folder:
+```
+|---brandenburg_gate
+|   |---dense
+|   |   |---images
+|   |   |---sparse
+|   |   |---stereo
+|   |---brandenburg.tsv
+```
 Then, run the command:
 ```
 ns-train splatfacto-w --data [PATH]
 ```
 
-If you want to train datasets without nerf-w's train/test split:
+If you want to train datasets without nerf-w's train/test split or your own datasets, we provided a light-weight version of the method for general cases. To train with it, you can run the following command
 ```
-ns-train splatfacto-w --data [PATH] colmap 
+ns-train splatfacto-w-light --data [PATH] [dataparser]
 ```
+For phototourism, the `dataparser` should be `colmap` and you need to change the colmap path through the CLI because phototourism dataparser does not load 3D points.
