@@ -13,6 +13,9 @@ from splatfactow.splatfactow_model import SplatfactoWModelConfig
 from nerfstudio.pipelines.base_pipeline import VanillaPipelineConfig
 from splatfactow.nerfw_dataparser import NerfWDataParserConfig
 from nerfstudio.data.dataparsers.nerfstudio_dataparser import NerfstudioDataParserConfig
+from nerfstudio.data.datamanagers.full_images_datamanager import (
+    FullImageDatamanagerConfig,
+)
 from nerfstudio.configs.base_config import ViewerConfig
 from nerfstudio.engine.optimizers import AdamOptimizerConfig
 from nerfstudio.engine.schedulers import (
@@ -131,19 +134,21 @@ splatfactow_light_config = MethodSpecification(
         max_num_iterations=30000,
         mixed_precision=False,
         pipeline=VanillaPipelineConfig(
-            datamanager=SplatfactoWDatamanagerConfig(
+            datamanager=FullImageDatamanagerConfig(
                 dataparser=NerfstudioDataParserConfig(
                     load_3D_points=True,
                 ),
                 cache_images_type="uint8",
             ),
             model=SplatfactoWModelConfig(
-                appearance_embed_dim=48,
+                appearance_embed_dim=24,
+                appearance_features_dim=32,
                 app_layer_width=128,
                 app_num_layers=2,
                 bg_layer_width=128,
                 bg_num_layers=2,
                 sh_degree_interval=1000,
+                bg_sh_degree=4,
             ),
         ),
         optimizers={
@@ -192,9 +197,9 @@ splatfactow_light_config = MethodSpecification(
                 ),
             },
             "field_background_rest": {
-                "optimizer": AdamOptimizerConfig(lr=2e-3 / 10, eps=1e-15),
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 20, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=2e-4 / 10, max_steps=15000
+                    lr_final=2e-4 / 20, max_steps=15000
                 ),
             },
             "appearance_model_encoder": {
@@ -210,13 +215,13 @@ splatfactow_light_config = MethodSpecification(
                 ),
             },
             "appearance_model_rest": {
-                "optimizer": AdamOptimizerConfig(lr=2e-3 / 10, eps=1e-15),
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 20, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=1e-4 / 10, max_steps=15000
+                    lr_final=1e-4 / 20, max_steps=15000
                 ),
             },
             "appearance_embed": {
-                "optimizer": AdamOptimizerConfig(lr=0.02, eps=1e-15),
+                "optimizer": AdamOptimizerConfig(lr=0.001, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
                     lr_final=3e-4, max_steps=15000
                 ),

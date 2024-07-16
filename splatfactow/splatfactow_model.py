@@ -226,7 +226,7 @@ class SplatfactoWModelConfig(ModelConfig):
     """The interval to increase the SH degree"""
     sh_degree: int = 3
     """The degree of SH to use for the color field"""
-    bg_sh_degree: int = 3
+    bg_sh_degree: int = 4
     """The degree of SH to use for the background model"""
 
 
