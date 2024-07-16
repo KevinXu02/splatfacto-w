@@ -1,5 +1,5 @@
 # Splatfacto-W: A Nerfstudio Implementation of Gaussian Splatting for In the Wild Captures
-An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatfactow/)
+An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatfactow/).
 
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
