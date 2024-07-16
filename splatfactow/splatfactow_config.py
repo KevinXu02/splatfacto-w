@@ -149,6 +149,9 @@ splatfactow_light_config = MethodSpecification(
                 bg_num_layers=2,
                 sh_degree_interval=1000,
                 bg_sh_degree=4,
+                enable_bg_model=False,
+                enable_alpha_loss=False,
+                enable_robust_mask=False,
             ),
         ),
         optimizers={
