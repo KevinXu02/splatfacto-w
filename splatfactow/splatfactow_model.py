@@ -196,10 +196,18 @@ class SplatfactoWModelConfig(ModelConfig):
     """Config of the camera optimizer to use"""
     enable_bg_model: bool = True
     """Whether to enable the 2d background model"""
-    implementation: Literal["tcnn", "torch"] = "tcnn"
-    """Implementation of the background model"""
+    bg_num_layers: int = 3
+    """Number of layers in the background model"""
+    bg_layer_width: int = 128
+    """Width of each layer in the background model"""
+    implementation: Literal["tcnn", "torch"] = "torch"
+    """Implementation of the models"""
     appearance_embed_dim: int = 48
     """Dimension of the appearance embedding, if 0, no appearance embedding is used"""
+    app_num_layers: int = 3
+    """Number of layers in the appearance model"""
+    app_layer_width: int = 256
+    """Width of each layer in the appearance model"""
     enable_alpha_loss: bool = True
     """Whether to enable the alpha loss for punishing gaussians from occupying background space, this also works with pure color background (i.e. white for overexposed skys)"""
     appearance_features_dim: int = 72
@@ -319,6 +327,8 @@ class SplatfactoWModel(Model):
                 appearance_embedding_dim=self.config.appearance_embed_dim,
                 implementation=self.config.implementation,
                 sh_levels=self.config.bg_sh_degree,
+                num_layers=self.config.bg_num_layers,
+                layer_width=self.config.bg_layer_width,
             )
         else:
             self.bg_model = None
@@ -328,6 +338,8 @@ class SplatfactoWModel(Model):
             appearance_features_dim=self.config.appearance_features_dim,
             implementation=self.config.implementation,
             sh_levels=self.config.sh_degree,
+            num_layers=self.config.app_num_layers,
+            layer_width=self.config.app_layer_width,
         )
 
         self.cached_colors = None

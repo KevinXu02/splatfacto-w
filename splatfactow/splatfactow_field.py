@@ -18,19 +18,33 @@ from gsplat.cuda._wrapper import spherical_harmonics
 
 class BGField(Field):
     def __init__(
-        self, appearance_embedding_dim: int, implementation="torch", sh_levels=4
+        self,
+        appearance_embedding_dim: int,
+        implementation: Literal["tcnn", "torch"] = "torch",
+        sh_levels: int = 4,
+        layer_width: int = 128,
+        num_layers: int = 3,
     ):
         super().__init__()
         self.sh_dim = (sh_levels + 1) ** 2
 
-        self.encoder = nn.Sequential(
-            nn.Linear(appearance_embedding_dim, 128),
-            nn.ReLU(),
-            nn.Linear(128, 128),
-            nn.ReLU(),
+        # self.encoder = nn.Sequential(
+        #     nn.Linear(appearance_embedding_dim, 128),
+        #     nn.ReLU(),
+        #     nn.Linear(128, 128),
+        #     nn.ReLU(),
+        # )
+        self.encoder = MLP(
+            in_dim=appearance_embedding_dim,
+            num_layers=num_layers - 1,
+            layer_width=layer_width,
+            out_dim=layer_width,
+            activation=nn.ReLU(),
+            out_activation=nn.ReLU(),
+            implementation=implementation,
         )
-        self.sh_base_head = nn.Linear(128, 3)
-        self.sh_rest_head = nn.Linear(128, (self.sh_dim - 1) * 3)
+        self.sh_base_head = nn.Linear(layer_width, 3)
+        self.sh_rest_head = nn.Linear(layer_width, (self.sh_dim - 1) * 3)
         # zero initialization
         self.sh_rest_head.weight.data.zero_()
         self.sh_rest_head.bias.data.zero_()
@@ -41,7 +55,7 @@ class BGField(Field):
         """Predicts background colors at infinity."""
         cur_sh_dim = (num_sh + 1) ** 2
         directions = ray_bundle.directions.view(-1, 3)
-        x = self.encoder(appearance_embedding)
+        x = self.encoder(appearance_embedding).float()
         sh_base = self.sh_base_head(x)  # [batch, 3]
         sh_rest = self.sh_rest_head(x)[
             ..., : (cur_sh_dim - 1) * 3
@@ -68,31 +82,34 @@ class BGField(Field):
 class SplatfactoWField(Field):
     def __init__(
         self,
-        appearance_embed_dim,
-        appearance_features_dim,
+        appearance_embed_dim: int,
+        appearance_features_dim: int,
         implementation: Literal["tcnn", "torch"] = "torch",
-        sh_levels=4,
+        sh_levels: int = 4,
+        num_layers: int = 3,
+        layer_width: int = 256,
     ):
         super().__init__()
 
-        # self.color_nn = MLP(
-        #     in_dim=appearance_embed_dim + appearance_features_dim+dir_dim,
-        #     num_layers=2,
-        #     layer_width=256,
-        #     out_dim=3,
-        #     activation=nn.ReLU(),
-        #     out_activation=nn.Sigmoid(),
-        #     implementation=implementation,
-        # )
-        self.sh_dim = (sh_levels + 1) ** 2
-        self.encoder = nn.Sequential(
-            nn.Linear(appearance_embed_dim + appearance_features_dim, 256),
-            nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
+        self.encoder = MLP(
+            in_dim=appearance_embed_dim + appearance_features_dim,
+            num_layers=num_layers - 1,
+            layer_width=layer_width,
+            out_dim=layer_width,
+            activation=nn.ReLU(),
+            out_activation=nn.ReLU(),
+            implementation=implementation,
         )
-        self.sh_base_head = nn.Linear(256, 3)
-        self.sh_rest_head = nn.Linear(256, (self.sh_dim - 1) * 3)
+        self.sh_dim = (sh_levels + 1) ** 2
+        # self.encoder = nn.Sequential(
+        #     nn.Linear(appearance_embed_dim + appearance_features_dim, 256),
+        #     nn.ReLU(),
+        #     nn.Linear(256, 256),
+        #     nn.ReLU(),
+        # )
+        # self.sh_base_head = nn.Linear(layer_width, 3)
+        self.sh_base_head = nn.Linear(layer_width, 3)
+        self.sh_rest_head = nn.Linear(layer_width, (self.sh_dim - 1) * 3)
         # zero initialization
         self.sh_rest_head.weight.data.zero_()
         self.sh_rest_head.bias.data.zero_()
@@ -102,7 +119,9 @@ class SplatfactoWField(Field):
         appearance_embed: Tensor,
         appearance_features: Tensor,
     ) -> Tensor:
-        x = self.encoder(torch.cat((appearance_embed, appearance_features), dim=-1))
+        x = self.encoder(
+            torch.cat((appearance_embed, appearance_features), dim=-1)
+        ).float()
         base_color = self.sh_base_head(x)
         sh_rest = self.sh_rest_head(x)
         sh_coeffs = torch.cat([base_color, sh_rest], dim=-1).view(-1, self.sh_dim, 3)

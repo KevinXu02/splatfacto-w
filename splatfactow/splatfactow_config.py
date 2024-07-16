@@ -119,26 +119,29 @@ splatfactow_config = MethodSpecification(
     ),
 )
 
-splatfactow_config_1 = MethodSpecification(
-    description="Splatfacto in the wild gradacc",
+splatfactow_light_config = MethodSpecification(
+    description="Splatfacto in the wild (light)",
     config=TrainerConfig(
-        method_name="splatfacto-w-gradacc",
+        method_name="splatfacto-w-light",
         steps_per_eval_image=100,
         steps_per_eval_batch=0,
         steps_per_save=2000,
-        steps_per_eval_all_images=1000,
-        max_num_iterations=65000,
+        steps_per_eval_all_images=10000000,
+        max_num_iterations=30000,
         mixed_precision=False,
-        gradient_accumulation_steps={
-            "appearance_features": 32,
-            "appearance_model": 32,
-        },
         pipeline=VanillaPipelineConfig(
             datamanager=SplatfactoWDatamanagerConfig(
                 dataparser=NerfWDataParserConfig(),
                 cache_images_type="uint8",
             ),
-            model=SplatfactoWModelConfig(),
+            model=SplatfactoWModelConfig(
+                appearance_embed_dim=48,
+                app_layer_width=128,
+                app_num_layers=2,
+                bg_layer_width=128,
+                bg_num_layers=2,
+                sh_degree_interval=1000,
+            ),
         ),
         optimizers={
             "means": {
@@ -149,7 +152,7 @@ splatfactow_config_1 = MethodSpecification(
                 ),
             },
             "appearance_features": {
-                "optimizer": AdamOptimizerConfig(lr=0.002, eps=1e-15),
+                "optimizer": AdamOptimizerConfig(lr=0.02, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
                     lr_final=1e-3,
                     max_steps=40000,
@@ -170,25 +173,49 @@ splatfactow_config_1 = MethodSpecification(
             "camera_opt": {
                 "optimizer": AdamOptimizerConfig(lr=1e-3, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=5e-5, max_steps=30000
+                    lr_final=5e-5, max_steps=15000
                 ),
             },
-            "field_background": {
+            "field_background_encoder": {
                 "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=1e-4, max_steps=30000
+                    lr_final=1e-4, max_steps=15000
                 ),
             },
-            "appearance_model": {
+            "field_background_base": {
                 "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=1e-4, max_steps=30000
+                    lr_final=2e-4, max_steps=15000
+                ),
+            },
+            "field_background_rest": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 10, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=2e-4 / 10, max_steps=15000
+                ),
+            },
+            "appearance_model_encoder": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4, max_steps=15000
+                ),
+            },
+            "appearance_model_base": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4, max_steps=15000
+                ),
+            },
+            "appearance_model_rest": {
+                "optimizer": AdamOptimizerConfig(lr=2e-3 / 10, eps=1e-15),
+                "scheduler": ExponentialDecaySchedulerConfig(
+                    lr_final=1e-4 / 10, max_steps=15000
                 ),
             },
             "appearance_embed": {
                 "optimizer": AdamOptimizerConfig(lr=0.02, eps=1e-15),
                 "scheduler": ExponentialDecaySchedulerConfig(
-                    lr_final=1e-3, max_steps=40000
+                    lr_final=3e-4, max_steps=15000
                 ),
             },
         },
