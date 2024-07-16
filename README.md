@@ -2,7 +2,7 @@
 An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatfactow/).
 
 ## Important
-The code part for view changing hasn't been merged into nerfstudio main branch yet. You might need to manually clone this PR nerfstudio-project/nerfstudio#3293.
+The code part for appearance changing hasn't been merged into nerfstudio main branch yet. You might need to manually clone this PR nerfstudio-project/nerfstudio#3293.
 
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
