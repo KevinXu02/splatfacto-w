@@ -2,7 +2,7 @@
 An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatfactow/).
 
 ## Important
-The code part for appearance changing hasn't been merged into nerfstudio main branch yet. You might need to manually clone this PR nerfstudio-project/nerfstudio#3293.
+Please update your nerfstudio to the latest development version.
 
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
@@ -20,7 +20,7 @@ You can download the phototourism dataset from running.
 ns-download-data phototourism --capture-name <capture_name>
 ```
 
-## Running Splafacto-w
+## Running Splafacto-W
 To train with it, download the train/test tsv file from the bottom of [nerf-w](https://nerf-w.github.io/) and put it under the data folder (or copy them from `./splatfacto-w/dataset_split`). For instance, for Brandenburg Gate the path would be `your-data-folder/brandenburg_gate/brandenburg.tsv`. You should have the following structure in your data folder:
 ```
 |---brandenburg_gate
