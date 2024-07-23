@@ -3,6 +3,12 @@ An official implementation for [Splatfacto-W](https://kevinxu02.github.io/splatf
 
 ## Important
 Please update your nerfstudio to the latest development version.
+```
+git clone https://github.com/nerfstudio-project/nerfstudio.git
+cd nerfstudio
+pip install --upgrade pip setuptools
+pip install -e .
+```
 
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
