@@ -40,7 +40,7 @@ splatfactow_config = MethodSpecification(
                 dataparser=NerfWDataParserConfig(),
                 cache_images_type="uint8",
             ),
-            model=SplatfactoWModelConfig(),
+            model=SplatfactoWModelConfig(eval_right_half=True),
         ),
         optimizers={
             "means": {
@@ -130,7 +130,7 @@ splatfactow_light_config = MethodSpecification(
         steps_per_eval_image=100,
         steps_per_eval_batch=0,
         steps_per_save=2000,
-        steps_per_eval_all_images=10000000,
+        steps_per_eval_all_images=1000,
         max_num_iterations=30000,
         mixed_precision=False,
         pipeline=VanillaPipelineConfig(
@@ -153,6 +153,10 @@ splatfactow_light_config = MethodSpecification(
                 enable_alpha_loss=False,
                 enable_robust_mask=False,
                 never_mask_upper=0.0,
+                use_avg_appearance=True,
+                reset_alpha_every=30,
+                stop_screen_size_at=4000,
+                stop_split_at=15000,
             ),
         ),
         optimizers={

@@ -228,6 +228,10 @@ class SplatfactoWModelConfig(ModelConfig):
     """The degree of SH to use for the color field"""
     bg_sh_degree: int = 4
     """The degree of SH to use for the background model"""
+    use_avg_appearance: bool = False
+    """Whether to use the average appearance embedding or 0-th for evaluation"""
+    eval_right_half: bool = False
+    """Whether to use the right half of the image for evluation"""
 
 
 class SplatfactoWModel(Model):
@@ -884,20 +888,23 @@ class SplatfactoWModel(Model):
             )
 
         # get the appearance embedding
+        use_cached_sh = False
         if camera.metadata is not None and "cam_idx" in camera.metadata:
             cam_idx = camera.metadata["cam_idx"]
             if self.last_cam_idx is not None:
                 use_cached_sh = cam_idx == self.last_cam_idx
-            else:
-                use_cached_sh = False
             self.last_cam_idx = cam_idx
             appearance_embed = self.appearance_embeds(
                 torch.tensor(cam_idx, device=self.device)
             )
         else:
-            appearance_embed = self.appearance_embeds(
-                torch.tensor(0, device=self.device)
-            )
+            if self.config.use_avg_appearance:
+                # calculate the average appearance embedding
+                appearance_embed = self.appearance_embeds.weight.mean(dim=0)
+            else:
+                appearance_embed = self.appearance_embeds(
+                    torch.tensor(0, device=self.device)
+                )
 
         if self.training:
             assert camera.shape[0] == 1, "Only one camera at a time"
@@ -1204,8 +1211,9 @@ class SplatfactoWModel(Model):
 
         # hacked version, only eval on the right half of the image
         # cut the image in half,HW3
-        gt_rgb = gt_rgb[:, gt_rgb.shape[1] // 2 :, :]
-        predicted_rgb = predicted_rgb[:, predicted_rgb.shape[1] // 2 :, :]
+        if self.config.eval_right_half:
+            gt_rgb = gt_rgb[:, gt_rgb.shape[1] // 2 :, :]
+            predicted_rgb = predicted_rgb[:, predicted_rgb.shape[1] // 2 :, :]
 
         # cv2.imwrite("gt.png", (gt_rgb.detach().cpu().numpy() * 255).astype(np.uint8))
         # cv2.imwrite("p.png", (predicted_rgb.detach().cpu().numpy() * 255).astype(np.uint8))
