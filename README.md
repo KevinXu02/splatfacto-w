@@ -38,7 +38,7 @@ To train with it, download the train/test tsv file from the bottom of [nerf-w](h
 ```
 Then, run the command:
 ```
-ns-train splatfacto-w --data [PATH]
+ns-train splatfacto-w --data [PATH] nerf-w-data-parser-config --data_name [trevi,sacre,brandenburg]
 ```
 
 If you want to train datasets without nerf-w's train/test split or your own datasets, we provided a light-weight version of the method for general cases. To train with it, you can run the following command
