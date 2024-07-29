@@ -10,6 +10,11 @@ pip install --upgrade pip setuptools
 pip install -e .
 ```
 
+# TODO List
+- [ ] Support rendering videos for selected camera index
+- [ ] Support exporting PLY files for selected index
+- [ ] (Probably) Merge splatfacto-w-light into Nerfstudio main branch
+
 ## Registering with Nerfstudio
 Ensure that nerfstudio has been installed according to the [instructions](https://docs.nerf.studio/en/latest/quickstart/installation.html). Clone or fork this repository and run the commands:
 
