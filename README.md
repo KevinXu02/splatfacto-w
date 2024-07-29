@@ -10,7 +10,7 @@ pip install --upgrade pip setuptools
 pip install -e .
 ```
 
-# TODO List
+## TODO List
 - [ ] Support rendering videos for selected camera index
 - [ ] Support exporting PLY files for selected index
 - [ ] (Probably) Merge splatfacto-w-light into Nerfstudio main branch
