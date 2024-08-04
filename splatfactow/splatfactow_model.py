@@ -891,8 +891,10 @@ class SplatfactoWModel(Model):
         use_cached_sh = False
         if camera.metadata is not None and "cam_idx" in camera.metadata:
             cam_idx = camera.metadata["cam_idx"]
-            if self.last_cam_idx is not None:
+            if self.last_cam_idx is not None and not self.training:
                 use_cached_sh = cam_idx == self.last_cam_idx
+                if cam_idx != self.last_cam_idx:
+                    CONSOLE.log("Current camera idx is", cam_idx)
             self.last_cam_idx = cam_idx
             appearance_embed = self.appearance_embeds(
                 torch.tensor(cam_idx, device=self.device)
@@ -937,7 +939,7 @@ class SplatfactoWModel(Model):
         else:
             render_mode = "RGB"
 
-        if use_cached_sh and not self.training and self.cached_colors is not None:
+        if use_cached_sh and self.cached_colors is not None:
             colors = self.cached_colors
         else:
             colors = self.color_nn(
