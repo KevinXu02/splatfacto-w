@@ -11,8 +11,7 @@ from torch import Tensor, nn
 
 from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.field_components import MLP
-from nerfstudio.field_components.encodings import SHEncoding
-from nerfstudio.fields.base_field import Field, get_normalized_directions
+from nerfstudio.fields.base_field import Field
 from gsplat.cuda._wrapper import spherical_harmonics
 
 
@@ -126,3 +125,25 @@ class SplatfactoWField(Field):
         sh_rest = self.sh_rest_head(x)
         sh_coeffs = torch.cat([base_color, sh_rest], dim=-1).view(-1, self.sh_dim, 3)
         return sh_coeffs
+
+    def shs_0(
+        self,
+        appearance_embed: Tensor,
+        appearance_features: Tensor,
+    ) -> Tensor:
+        x = self.encoder(
+            torch.cat((appearance_embed, appearance_features), dim=-1)
+        ).float()
+        base_color = self.sh_base_head(x)
+        return base_color.view(-1, 3)
+
+    def shs_rest(
+        self,
+        appearance_embed: Tensor,
+        appearance_features: Tensor,
+    ) -> Tensor:
+        x = self.encoder(
+            torch.cat((appearance_embed, appearance_features), dim=-1)
+        ).float()
+        sh_rest = self.sh_rest_head(x)
+        return sh_rest.view(-1, (self.sh_dim - 1), 3)

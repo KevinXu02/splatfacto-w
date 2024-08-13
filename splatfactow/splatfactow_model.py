@@ -351,20 +351,46 @@ class SplatfactoWModel(Model):
         self.last_cam_idx = None
         self.cached_dirs = {}
 
-    # @property
-    # def colors(self):
-    #     if self.config.sh_degree > 0:
-    #         return SH2RGB(self.appearance_features)
-    #     else:
-    #         return torch.sigmoid(self.appearance_features)
+        self.camera_idx = 0
 
-    # @property
-    # def shs_0(self):
-    #     return self.appearance_features
+    # def setup_shs(self, cam_idx: int):
+    #     appearance_features = self.gauss_params["appearance_features"]
+    #     appearance_embed = self.appearance_embeds(
+    #         torch.tensor(cam_idx, device=self.device)
+    #     )
+    #     self.shs_0 =self.color_nn.shs_0(
+    #     appearance_embed=appearance_embed.repeat(appearance_features.shape[0], 1),
+    #     appearance_features=appearance_features,
+    # )
+    #     self.shs_rest = self.color_nn.shs_rest(
+    #         appearance_embed=appearance_embed.repeat(appearance_features.shape[0], 1),
+    #         appearance_features=appearance_features,
+    #     )
 
-    # @property
-    # def shs_rest(self):
-    #     return self.features_rest
+    def set_camera_idx(self, cam_idx: int):
+        self.camera_idx = cam_idx
+
+    @property
+    def shs_0(self):
+        appearance_features = self.gauss_params["appearance_features"]
+        appearance_embed = self.appearance_embeds(
+            torch.tensor(self.camera_idx, device=self.device)
+        )
+        return self.color_nn.shs_0(
+            appearance_embed=appearance_embed.repeat(appearance_features.shape[0], 1),
+            appearance_features=appearance_features,
+        )
+
+    @property
+    def shs_rest(self):
+        appearance_features = self.gauss_params["appearance_features"]
+        appearance_embed = self.appearance_embeds(
+            torch.tensor(self.camera_idx, device=self.device)
+        )
+        return self.color_nn.shs_rest(
+            appearance_embed=appearance_embed.repeat(appearance_features.shape[0], 1),
+            appearance_features=appearance_features,
+        )
 
     @property
     def num_points(self):
