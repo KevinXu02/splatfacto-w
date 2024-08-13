@@ -11,8 +11,8 @@ pip install -e .
 ```
 
 ## TODO List
-- [ ] Support rendering videos for selected camera index
-- [ ] Support exporting PLY files for selected index
+- [x] Support rendering videos for selected camera index
+- [x] Support exporting PLY files for selected index
 - [ ] (Probably) Merge splatfacto-w-light into Nerfstudio main branch
 
 ## Registering with Nerfstudio
@@ -25,7 +25,7 @@ pip install -e .
 ns-install-cli
 ```
 
-## Downloading data
+## Downloading Data
 You can download the phototourism dataset from running.
 ```
 ns-download-data phototourism --capture-name <capture_name>
@@ -64,3 +64,20 @@ You can add these options to enhance the training process:
    - Improves handling of transient objects (things that appear/disappear between views)
 
 For phototourism, the `dataparser` should be `colmap` and you need to change the colmap path through the CLI because phototourism dataparser does not load 3D points.
+
+## Exporting PLY Files
+
+We provide a temporary script `export_script.py` for exporting PLY files. 
+
+The basic command structure is as follows:
+
+```
+python export_script.py --load_config [config_file] --output_dir [output_directory] --camera_idx [camera_index]
+```
+
+##  Rendering Videos For Selected Camera Index
+
+You can see the current camera index in the CLI as you click each image in Viser.
+
+To render videos for selected camera index, add the `--camera_idx [camera_index]` parameter to the end of your `ns-render` command.
+
