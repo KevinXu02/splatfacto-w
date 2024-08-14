@@ -67,7 +67,7 @@ For phototourism, the `dataparser` should be `colmap` and you need to change the
 
 ## Exporting PLY Files
 
-We provide a temporary script `export_script.py` for exporting PLY files. 
+We provide a temporary script `export_script.py` for exporting PLY files. Notice that the background model won't be exported since it is not supported by other PLY viewers.
 
 The basic command structure is as follows:
 
