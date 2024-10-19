@@ -27,7 +27,7 @@ from splatfactow.splatfactow_field import BGField, SplatfactoWField
 
 import numpy as np
 import torch
-from gsplat.cuda_legacy._torch_impl import quat_to_rotmat
+from torch import Tensor
 
 try:
     from gsplat.rendering import rasterization
@@ -36,6 +36,8 @@ except ImportError:
 
 from pytorch_msssim import SSIM
 from torch.nn import Parameter
+import torch.nn.functional as F
+
 
 from nerfstudio.cameras.camera_optimizers import CameraOptimizer, CameraOptimizerConfig
 from nerfstudio.cameras.cameras import Cameras
@@ -51,6 +53,25 @@ from nerfstudio.utils.colors import get_color
 from nerfstudio.utils.misc import torch_compile
 from nerfstudio.utils.rich_utils import CONSOLE
 
+def quat_to_rotmat(quats: Tensor) -> Tensor:
+    """Convert quaternion to rotation matrix."""
+    quats = F.normalize(quats, p=2, dim=-1)
+    w, x, y, z = torch.unbind(quats, dim=-1)
+    R = torch.stack(
+        [
+            1 - 2 * (y**2 + z**2),
+            2 * (x * y - w * z),
+            2 * (x * z + w * y),
+            2 * (x * y + w * z),
+            1 - 2 * (x**2 + z**2),
+            2 * (y * z - w * x),
+            2 * (x * z - w * y),
+            2 * (y * z + w * x),
+            1 - 2 * (x**2 + y**2),
+        ],
+        dim=-1,
+    )
+    return R.reshape(quats.shape[:-1] + (3, 3))
 
 def random_quat_tensor(N):
     """
