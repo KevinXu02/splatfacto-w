@@ -12,3 +12,7 @@ include = ["splatfactow*", "splatfactow_light*"]
 [project.entry-points.'nerfstudio.method_configs']
 splatfactow = 'splatfactow.splatfactow_config:splatfactow_config'
 splatfactow_light = 'splatfactow.splatfactow_config:splatfactow_light_config'
+
+# register the dataparser config
+[project.entry-points.'nerfstudio.dataparser_configs']
+splatfactow_dataparser = 'splatfactow.nerfw_dataparser:splatfactow_dataparser'

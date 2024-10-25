@@ -32,6 +32,7 @@ from nerfstudio.data.dataparsers.base_dataparser import (
 )
 from nerfstudio.data.scene_box import SceneBox
 from nerfstudio.data.utils import colmap_parsing_utils as colmap_utils
+from nerfstudio.plugins.registry_dataparser import DataParserSpecification
 
 # TODO(1480) use pycolmap instead of colmap_parsing_utils
 # import pycolmap
@@ -342,3 +343,6 @@ class NerfW(DataParser):
 
     def find_eval_idx(self, idx):
         return self.i_eval[idx]
+
+
+splatfactow_dataparser=DataParserSpecification(config=NerfWDataParserConfig())
